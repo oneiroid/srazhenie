@@ -39,8 +39,49 @@ const REASON = {
   cheat: 'Нарушение правил соперником',
 };
 
+// Наборы портретов: img/pieces/<набор>/<звание>.webp. who — подписи к званиям.
+const PIECE_SETS = {
+  classic: { name: 'Классика' },
+  nomenklatura: {
+    name: 'Номенклатура',
+    who: {
+      1: 'Сталин', 2: 'Берия', 3: 'Ежов', 4: 'Ягода', 5: 'Вышинский', 6: 'Молотов',
+      7: 'Ульрих', 8: 'Каганович', 9: 'Андропов', 10: 'Хрущёв', [MINE]: 'Дзержинский', [FLAG]: 'Ленин',
+    },
+  },
+};
+const SET_KEY = 'srazhenie.pieceSet';
+let pieceSet = PIECE_SETS[localStorage.getItem(SET_KEY)] ? localStorage.getItem(SET_KEY) : 'classic';
+
 // Абсолютный адрес: относительный url() в CSS-переменной разрешается от файла стилей.
-const imgUrl = rank => new URL(`img/pieces/${RANK[rank].key}.webp`, document.baseURI).href;
+const imgUrl = (rank, set = pieceSet) => new URL(`img/pieces/${set}/${RANK[rank].key}.webp`, document.baseURI).href;
+const whoOf = rank => (PIECE_SETS[pieceSet].who || {})[rank] || '';
+
+// Фишки ссылаются на --img-<звание> у корня, поэтому смена набора перерисовывает их все сразу.
+function applyPieceSet(set) {
+  pieceSet = set;
+  localStorage.setItem(SET_KEY, set);
+  for (const r of RANKS) document.documentElement.style.setProperty(`--img-${r.key}`, `url(${imgUrl(r.id)})`);
+  document.querySelectorAll('.seg[data-name="pieceSet"] button').forEach(b => b.classList.toggle('on', b.dataset.v === set));
+  $('#rulesText').innerHTML = rulesHtml();
+}
+
+function pieceSetSeg() {
+  const seg = el('div', 'seg');
+  seg.dataset.name = 'pieceSet';
+  for (const [v, s] of Object.entries(PIECE_SETS)) {
+    const b = el('button', v === pieceSet ? 'on' : '', s.name);
+    b.dataset.v = v;
+    seg.append(b);
+  }
+  seg.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (b) applyPieceSet(b.dataset.v);
+  });
+  const f = el('div', 'field');
+  f.append(el('span', '', 'Портреты'), seg);
+  return f;
+}
 
 // Элемент фишки. rank === null — рубашка.
 function pieceEl(owner, rank, extra = '') {
@@ -48,7 +89,7 @@ function pieceEl(owner, rank, extra = '') {
   const card = el('div', 'card');
   if (rank != null) {
     const art = el('div', 'art');
-    art.style.setProperty('--img', `url(${imgUrl(rank)})`);
+    art.style.setProperty('--img', `var(--img-${RANK[rank].key})`);
     card.append(art);
   }
   e.append(card);
@@ -123,14 +164,15 @@ function initMenu() {
 
   const art = $('#menuArt');
   for (const r of [1, 3, 8, 10, FLAG]) art.append(pieceEl(r % 2 ? WHITE : BLUE, r));
-  $('#rulesText').innerHTML = rulesHtml();
+  $('#btnRules').before(pieceSetSeg());
+  applyPieceSet(pieceSet);
 }
 
 function rulesHtml() {
   const rows = RANKS.map(r => {
     const tmp = el('div');
     tmp.append(pieceEl(WHITE, r.id));
-    return `<tr><td>${tmp.innerHTML}</td><td><b>${r.name}</b> ×${r.count}<br><small>${RANK_INFO[r.id]}</small></td></tr>`;
+    return `<tr><td>${tmp.innerHTML}</td><td><b>${r.name}</b> ×${r.count}${whoOf(r.id) ? ` — ${whoOf(r.id)}` : ''}<br><small>${RANK_INFO[r.id]}</small></td></tr>`;
   }).join('');
   return `
   <h3>Цель</h3><p>Захватить знамя противника или лишить его возможности ходить.</p>
@@ -625,6 +667,7 @@ function showBattle(ev, replay = false) {
     const s = el('div', `side${lost ? ' lost' : ''}`);
     s.append(pieceEl(piece.owner, rank));
     s.append(el('div', 'nm', RANK[rank].name));
+    if (whoOf(rank)) s.append(el('div', 'who-nm', whoOf(rank)));
     return s;
   };
   vs.append(side(att, b.attRank, b.result !== 'att'), el('div', 'x', '⚔'), side(def, b.defRank, b.result !== 'def'));
@@ -705,6 +748,7 @@ function openGameMenu() {
     if (m && m.mode === 'online' && m.stage !== 'lobby') {
       box.append(el('p', '', `Партия <b>${m.room}</b>`));
     }
+    box.append(pieceSetSeg());
     box.append(button('Правила', () => { closeDialogs(); toMenu(); menuPage('rules'); }));
     box.append(button('Выйти в меню', toMenu));
     if (m && m.mode !== 'online') box.append(el('p', '', 'Партия сохраняется автоматически.'));
@@ -736,7 +780,7 @@ const ui = { update, cover, showBattle, animated, gameOver, netStatus, closeDial
 // ---------- Старт ----------
 
 function init() {
-  for (const r of RANKS) new Image().src = imgUrl(r.id);
+  for (const set in PIECE_SETS) for (const r of RANKS) new Image().src = imgUrl(r.id, set);
   initMenu();
   initBoard();
   $('#tray').addEventListener('click', e => {

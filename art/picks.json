@@ -1,14 +1,30 @@
 {
-  "marshal": "marshal_2022432330.png",
-  "general": "general_1408166902.png",
-  "colonel": "colonel_978618346.png",
-  "major": "major_1330237857.png",
-  "captain": "captain_623899326.png",
-  "lieutenant": "lieutenant_1479977725.png",
-  "sergeant": "sergeant_1121791455.png",
-  "sapper": "sapper_1399623172.png",
-  "soldier": "soldier_764887033.png",
-  "scout": "scout_1483794969.png",
-  "mine": "mine_1556943708.png",
-  "flag": "flag_1187580240.png"
+  "classic": {
+    "marshal": "marshal_2022432330.png",
+    "general": "general_1408166902.png",
+    "colonel": "colonel_978618346.png",
+    "major": "major_1330237857.png",
+    "captain": "captain_623899326.png",
+    "lieutenant": "lieutenant_1479977725.png",
+    "sergeant": "sergeant_1121791455.png",
+    "sapper": "sapper_1399623172.png",
+    "soldier": "soldier_764887033.png",
+    "scout": "scout_1483794969.png",
+    "mine": "mine_1556943708.png",
+    "flag": "flag_1187580240.png"
+  },
+  "nomenklatura": {
+    "marshal": "marshal_1199382190_d45.png",
+    "general": "general_907800650_d45.png",
+    "colonel": "colonel_672840329_d45.png",
+    "major": "major_98691639_d45.png",
+    "captain": "captain_1654752321_d45.png",
+    "lieutenant": "lieutenant_1179395112_d45.png",
+    "sergeant": "sergeant_613874196_d45.png",
+    "sapper": "sapper_1729500410_d45.png",
+    "soldier": "soldier_579679424_d45.png",
+    "scout": "scout_1258991584_d45.png",
+    "mine": "mine_264625411_d45.png",
+    "flag": "flag_1190086429_d55.png"
+  }
 }
