@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
-"""Turn chosen raw portraits (art/picks.json: key -> raw file) into alpha masks img/pieces/<key>.webp.
-The mask is tinted per army in CSS (mask-image)."""
+"""Turn chosen raw portraits (art/picks.json: set -> key -> raw file) into alpha masks img/pieces/<set>/<key>.webp.
+Raw files of the classic set are in art/raw, of other sets in art/raw/<set>. The mask is tinted per army in CSS (mask-image).
+Usage: process_art.py [set ...]  (default: all sets)"""
 import json, os, sys
 from PIL import Image, ImageFilter, ImageOps
 
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 picks = json.load(open(os.path.join(ROOT, "art", "picks.json")))
-OUT = os.path.join(ROOT, "img", "pieces")
-os.makedirs(OUT, exist_ok=True)
 SIZE = 256
 
-for key, spec in picks.items():
+for set_name, key, spec in [(s, k, v) for s in (sys.argv[1:] or picks) for k, v in picks[s].items()]:
+    raw = os.path.join(ROOT, "art", "raw", *([] if set_name == "classic" else [set_name]))
+    OUT = os.path.join(ROOT, "img", "pieces", set_name)
+    os.makedirs(OUT, exist_ok=True)
     name, crop = (spec, None) if isinstance(spec, str) else (spec["file"], spec.get("crop"))
-    im = Image.open(os.path.join(ROOT, "art", "raw", name)).convert("L")
+    im = Image.open(os.path.join(raw, name)).convert("L")
     if crop:  # [left, top, right, bottom] as fractions
         w, h = im.size
         im = im.crop((int(crop[0] * w), int(crop[1] * h), int(crop[2] * w), int(crop[3] * h)))
@@ -32,4 +34,4 @@ for key, spec in picks.items():
     out.putalpha(alpha)
     path = os.path.join(OUT, f"{key}.webp")
     out.save(path, "WEBP", quality=88, method=6)
-    print(key, name, os.path.getsize(path), "bytes")
+    print(set_name, key, name, os.path.getsize(path), "bytes")

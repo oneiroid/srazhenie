@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Generate rank portraits via local ComfyUI (SDXL). Writes art/raw/<key>_<seed>.png and art/raw/index.json."""
+"""Generate rank portraits via local ComfyUI (SDXL).
+Writes art/raw/[<set>/]<key>_<seed>.png and index.json next to them (the classic set lives in art/raw itself)."""
 import json, sys, time, urllib.request, urllib.parse, random, os, argparse
 
 COMFY = "http://127.0.0.1:8188"
@@ -27,17 +28,53 @@ SUBJECTS = {
     "flag":       "regimental battle banner flag waving on a wooden pole with spear tip, fringe, object only, no people",
 }
 
-def wf(prompt, seed, size):
-    return {
+# Набор «Номенклатура»: Сталин и его подручные, по старшинству — от вождя к исполнителям.
+# Лица берутся с фотографий (--ref), поэтому в подсказке только имя: описания внешности спорят с фото.
+NOMENKLATURA = {
+    "marshal":    "Joseph Stalin",
+    "general":    "Lavrentiy Beria",
+    "colonel":    "Nikolai Yezhov",
+    "major":      "Genrikh Yagoda",
+    "captain":    "Andrey Vyshinsky",
+    "lieutenant": "Vyacheslav Molotov",
+    "sergeant":   "Vasily Ulrikh",
+    "sapper":     "Lazar Kaganovich",
+    "soldier":    "Yuri Andropov",
+    "scout":      "Nikita Khrushchev",
+    "mine":       "Felix Dzerzhinsky",
+    "flag":       "Vladimir Lenin",
+}
+SETS = {"classic": SUBJECTS, "nomenklatura": NOMENKLATURA}
+NOMENKLATURA_STYLE = ("vintage steel engraving portrait, etching, black ink line art, bold outlines, crosshatching shading, "
+                      "head and shoulders bust, centered, plain white paper background, isolated, high contrast, book illustration")
+NOMENKLATURA_NEG = NEG + ", pencil, charcoal, grey wash, smudged, soft shading, painting"
+
+def wf(prompt, seed, size, ref=None, denoise=1.0, neg=NEG):
+    g = {
         "4": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": CKPT}},
         "6": {"class_type": "CLIPTextEncode", "inputs": {"text": prompt, "clip": ["4", 1]}},
-        "7": {"class_type": "CLIPTextEncode", "inputs": {"text": NEG, "clip": ["4", 1]}},
+        "7": {"class_type": "CLIPTextEncode", "inputs": {"text": neg, "clip": ["4", 1]}},
         "5": {"class_type": "EmptyLatentImage", "inputs": {"width": size, "height": size, "batch_size": 1}},
         "3": {"class_type": "KSampler", "inputs": {"seed": seed, "steps": 22, "cfg": 6.0, "sampler_name": "dpmpp_2m",
-              "scheduler": "karras", "denoise": 1.0, "model": ["4", 0], "positive": ["6", 0], "negative": ["7", 0], "latent_image": ["5", 0]}},
+              "scheduler": "karras", "denoise": denoise, "model": ["4", 0], "positive": ["6", 0], "negative": ["7", 0], "latent_image": ["5", 0]}},
         "8": {"class_type": "VAEDecode", "inputs": {"samples": ["3", 0], "vae": ["4", 2]}},
         "9": {"class_type": "SaveImage", "inputs": {"filename_prefix": "srazhenie", "images": ["8", 0]}},
     }
+    if ref:  # img2img: латент из фотографии-образца (уже загруженной в input ComfyUI)
+        g["10"] = {"class_type": "LoadImage", "inputs": {"image": ref}}
+        g["11"] = {"class_type": "ImageScale", "inputs": {"image": ["10", 0], "upscale_method": "lanczos", "width": size, "height": size, "crop": "center"}}
+        g["5"] = {"class_type": "VAEEncode", "inputs": {"pixels": ["11", 0], "vae": ["4", 2]}}
+    return g
+
+def upload(path):
+    """Upload a reference image to ComfyUI's input folder, return its name there."""
+    boundary = "----srazhenie"
+    name = "srazhenie_" + os.path.basename(path)
+    body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"overwrite\"\r\n\r\ntrue\r\n"
+            f"--{boundary}\r\nContent-Disposition: form-data; name=\"image\"; filename=\"{name}\"\r\n"
+            f"Content-Type: image/png\r\n\r\n").encode() + open(path, "rb").read() + f"\r\n--{boundary}--\r\n".encode()
+    req = urllib.request.Request(COMFY + "/upload/image", data=body, headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
+    return json.load(urllib.request.urlopen(req))["name"]
 
 KLEIN_STYLE = ("Vintage 19th-century engraved book illustration, black ink on plain white paper, bold clean outlines "
                "with fine crosshatching, simple and highly legible, centered, isolated on a pure white background, "
@@ -68,22 +105,29 @@ def get(path):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--keys", default=",".join(SUBJECTS))
+    ap.add_argument("--set", default="classic", choices=SETS)
+    ap.add_argument("--keys", default="")
     ap.add_argument("--n", type=int, default=3)
     ap.add_argument("--size", type=int, default=768)
     ap.add_argument("--model", default="klein")
+    ap.add_argument("--ref", action="store_true", help="img2img from art/ref/<set>/prep/<key>.png (tools/prep_refs.py)")
+    ap.add_argument("--denoise", type=float, default=0.6)
     a = ap.parse_args()
-    os.makedirs(OUT, exist_ok=True)
-    idx_path = os.path.join(OUT, "index.json")
+    subjects = SETS[a.set]
+    style, neg = (NOMENKLATURA_STYLE, NOMENKLATURA_NEG) if a.set == "nomenklatura" else (STYLE, NEG)
+    out = OUT if a.set == "classic" else os.path.join(OUT, a.set)
+    os.makedirs(out, exist_ok=True)
+    idx_path = os.path.join(out, "index.json")
     index = json.load(open(idx_path)) if os.path.exists(idx_path) else []
-    keys = a.keys.split(",")
+    keys = a.keys.split(",") if a.keys else list(subjects)
     total, done = len(keys) * a.n, 0
     for key in keys:
         for _ in range(a.n):
             seed = random.randint(1, 2**31)
             t0 = time.time()
-            graph = (wf_klein(f"{SUBJECTS[key]}. {KLEIN_STYLE}", seed, a.size) if a.model == "klein"
-                     else wf(f"{SUBJECTS[key]}, {STYLE}", seed, a.size))
+            graph = (wf_klein(f"{subjects[key]}. {KLEIN_STYLE}", seed, a.size) if a.model == "klein"
+                     else wf(f"{subjects[key]}, {style}", seed, a.size, neg=neg,
+                             **(dict(ref=upload(os.path.join(OUT, "..", "ref", a.set, "prep", f"{key}.png")), denoise=a.denoise) if a.ref else {})))
             pid = post("/prompt", {"prompt": graph})["prompt_id"]
             while True:
                 h = json.loads(get(f"/history/{pid}"))
@@ -94,8 +138,8 @@ def main():
                 time.sleep(1)
             img = h[pid]["outputs"]["9"]["images"][0]
             data = get("/view?" + urllib.parse.urlencode(img))
-            name = f"{key}_{seed}.png"
-            open(os.path.join(OUT, name), "wb").write(data)
+            name = f"{key}_{seed}" + (f"_d{round(a.denoise * 100)}" if a.ref else "") + ".png"
+            open(os.path.join(out, name), "wb").write(data)
             index.append(name)
             json.dump(index, open(idx_path, "w"))
             done += 1
