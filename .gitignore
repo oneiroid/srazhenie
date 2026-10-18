@@ -1,0 +1,6 @@
+art/raw/
+live/
+live_jobs.tsv
+node_modules/
+.claude/
+art/gallery.html

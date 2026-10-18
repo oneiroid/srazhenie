@@ -1,0 +1,6 @@
+{
+  "name": "srazhenie",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node tests/selfplay.js" }
+}

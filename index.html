@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#24313a">
+<meta name="description" content="«Сражение» — настольная военно-тактическая игра: против компьютера, вдвоём на одном устройстве или по сети.">
+<title>Сражение</title>
+<link rel="icon" href="img/icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <section id="menu" class="screen active">
+    <div class="menu-box">
+      <h1>Сражение</h1>
+      <div class="menu-art" id="menuArt"></div>
+
+      <div class="menu-page" data-page="main">
+        <button class="btn primary" id="btnContinue" hidden>Продолжить партию</button>
+        <button class="btn" data-go="ai">Против компьютера</button>
+        <button class="btn" id="btnHotseat">Вдвоём на одном устройстве</button>
+        <button class="btn" data-go="online">По сети</button>
+        <button class="btn ghost" data-go="rules">Правила</button>
+      </div>
+
+      <div class="menu-page" data-page="ai" hidden>
+        <div class="field"><span>Уровень</span>
+          <div class="seg" data-name="level">
+            <button data-v="easy">Новобранец</button><button data-v="normal" class="on">Ветеран</button>
+          </div>
+        </div>
+        <div class="field"><span>Ваша армия</span>
+          <div class="seg" data-name="aiColor">
+            <button data-v="0" class="on">Белые</button><button data-v="1">Синие</button>
+          </div>
+        </div>
+        <p class="hint">Белые ходят первыми.</p>
+        <button class="btn primary" id="btnStartAi">Начать</button>
+        <button class="btn ghost" data-go="main">Назад</button>
+      </div>
+
+      <div class="menu-page" data-page="online" hidden>
+        <div class="field"><span>Ваша армия</span>
+          <div class="seg" data-name="netColor">
+            <button data-v="0" class="on">Белые</button><button data-v="1">Синие</button><button data-v="r">Случайно</button>
+          </div>
+        </div>
+        <button class="btn primary" id="btnCreate">Создать партию</button>
+        <div class="join-row">
+          <input id="joinCode" placeholder="Код партии" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8">
+          <button class="btn" id="btnJoin">Войти</button>
+        </div>
+        <button class="btn ghost" data-go="main">Назад</button>
+      </div>
+
+      <div class="menu-page rules" data-page="rules" hidden>
+        <div id="rulesText"></div>
+        <button class="btn ghost" data-go="main">Назад</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="play" class="screen">
+    <header>
+      <button class="icon" id="btnMenu" aria-label="Меню">☰</button>
+      <div id="status"></div>
+      <span id="netDot" title="Связь" hidden></span>
+    </header>
+    <main>
+      <div id="boardWrap">
+        <div id="board">
+          <div id="cells"></div>
+          <div id="pieces"></div>
+        </div>
+      </div>
+      <aside id="panel">
+        <div id="info"></div>
+        <div id="lobby" hidden></div>
+        <div id="tray"></div>
+        <div id="actions"></div>
+      </aside>
+    </main>
+  </section>
+
+  <div id="cover" class="overlay" hidden><div class="cover-box"><div id="coverText"></div><div class="cover-sub">Нажмите, чтобы продолжить</div></div></div>
+  <div id="battle" class="overlay" hidden><div class="battle-box"></div></div>
+  <div id="dialog" class="overlay" hidden><div class="dialog-box"></div></div>
+  <div id="toast" hidden></div>
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

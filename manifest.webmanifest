@@ -1,0 +1,10 @@
+{
+  "name": "Сражение",
+  "short_name": "Сражение",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#24313a",
+  "theme_color": "#24313a",
+  "icons": [{ "src": "img/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
